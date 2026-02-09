@@ -3,61 +3,101 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>...</title>
+
+<script>
+function bootTitle(cycles = 2, speed = 350) {
+  return new Promise(resolve => {
+    const frames = [".", "..", "..."];
+    let count = 0;
+    let i = 0;
+
+    const interval = setInterval(() => {
+      document.title = frames[i];
+      i = (i + 1) % frames.length;
+      count++;
+
+      if (count >= frames.length * cycles) {
+        clearInterval(interval);
+        document.title = "...";
+        resolve();
+      }
+    }, speed);
+  });
+}
+</script>
 
 <style>
-* {
-  box-sizing: border-box;
-}
-
-body {
+html, body {
   margin: 0;
-  background-color: black;
-  color: limegreen;
+  height: 100%;
+  overflow: hidden;
+  background: black;
   font-family: monospace;
-  height: 100dvh;
-  display: flex;
-  padding: 20px;
-  position: relative;
 }
 
-.binary-container {
-  white-space: pre-wrap;
-  font-size: 16px;
-  line-height: 1.2;
-  height: 100%;
-  width: calc(100% - 320px);
-  overflow: hidden;
+#binaryContainer {
+  position: fixed;
+  inset: 0;
+  padding: 16px;
+  padding-right: clamp(120px, 28vw, 380px);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  color: #39ff14;
+  font-size: clamp(12px, 3.5vw, 16px);
+  line-height: 1.25;
+  text-shadow: 0 0 4px rgba(57,255,20,0.35), 0 0 12px rgba(57,255,20,0.15);
+  overflow: hidden;
 }
 
 .line {
   opacity: 0;
+  transform: translateY(6px);
+  animation: appear 0.4s ease-out forwards, flicker 4s infinite;
+}
+
+.line.old {
+  animation: drift 2.5s ease-out forwards;
+}
+
+@keyframes appear {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes drift {
+  to { opacity: 0; transform: translateY(-20px); }
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  98% { opacity: 0.9; }
+  99% { opacity: 0.6; }
 }
 
 .side-image {
-  position: absolute;
-  right: 400px;
+  position: fixed;
   top: 50%;
+  right: 16px;
   transform: translateY(-50%);
-  width: 400px;
+  width: clamp(260px, 25vw, 360px);
   height: auto;
+  opacity: 0.85;
   pointer-events: none;
+  animation: float 8s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(-50%) translateY(0); }
+  50% { transform: translateY(-50%) translateY(-10px); }
 }
 </style>
 </head>
 
 <body>
-  <div class="binary-container" id="binaryContainer"></div>
 
+<div id="binaryContainer"></div>
 
-  <img
-    src="https://raw.githubusercontent.com/nil071n/N14/main/n14.png"
-    class="side-image"
-    alt="Side Image"
-  >
+<img src="https://raw.githubusercontent.com/nil071n/N14/main/n14.png" class="side-image" alt="">
 
 <script>
 const binaryString = `
@@ -389,56 +429,57 @@ const binaryString = `
 0101101
 `;
 
+const minBlock = 14;
+const maxBlock = 56;
+const typingSpeed = 14;
+const pause = 40;
+
 const container = document.getElementById("binaryContainer");
+const chars = binaryString.replace(/\s+/g, "").split("");
 
-const minBlockSize = 8;
-const maxBlockSize = 40;
-const typingSpeed = 2;
-const pauseBetweenBlocks = 20;
-
-const cleanString = binaryString.replace(/\s+/g, "").split("");
-
-function generateBlocks() {
-  let blocks = [];
+function splitIntoBlocks() {
+  const blocks = [];
   let i = 0;
-  while (i < cleanString.length) {
-    const len = Math.floor(Math.random() * (maxBlockSize - minBlockSize + 1)) + minBlockSize;
-    blocks.push(cleanString.slice(i, i + len).join(""));
+  while (i < chars.length) {
+    const len = Math.min(
+      Math.floor(Math.random() * (maxBlock - minBlock + 1)) + minBlock,
+      chars.length - i
+    );
+    blocks.push(chars.slice(i, i + len).join(""));
     i += len;
   }
   return blocks;
 }
 
-async function typeBlock(block) {
+async function typeBlock(text) {
   const line = document.createElement("div");
   line.className = "line";
   container.appendChild(line);
 
-  for (const char of block) {
-    line.textContent += char;
+  for (const c of text) {
+    line.textContent += c;
     await new Promise(r => setTimeout(r, typingSpeed));
   }
 
-  line.style.opacity = 1;
-
-  while (container.scrollHeight > container.clientHeight) {
-    container.removeChild(container.firstChild);
+  if (container.scrollHeight > container.clientHeight) {
+    const old = container.firstChild;
+    old.classList.add("old");
+    setTimeout(() => old.remove(), 2500);
   }
 
-  await new Promise(r => setTimeout(r, pauseBetweenBlocks));
+  await new Promise(r => setTimeout(r, pause));
 }
 
-async function startTyping() {
-  const blocks = generateBlocks();
+async function start() {
+  await bootTitle();
+  const blocks = splitIntoBlocks();
   for (const block of blocks) {
     await typeBlock(block);
   }
 }
 
-startTyping();
+start();
 </script>
+
 </body>
 </html>
-
-
-
